@@ -14,7 +14,7 @@ builder.Services.AddSwaggerGen();
 // Configure the HttpClient separately
 builder.Services.AddHttpClient("ApiHttpClientConfig", client =>
 {
-    client.BaseAddress = new Uri("https://api.example.com/");
+    client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
     client.Timeout = TimeSpan.FromSeconds(60); // Optional timeout configuration
 })

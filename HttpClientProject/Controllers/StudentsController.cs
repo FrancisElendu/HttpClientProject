@@ -17,13 +17,18 @@ namespace HttpClientProject.Controllers
         }
 
         // GET: api/students
+        //[HttpGet]
+        //public async Task<IActionResult> GetAllStudents()
+        //{
+        //    var students = await _apiService.GetAsync<Student[]>("api/students");
+        //    return Ok(students);
+        //}
         [HttpGet]
-        public async Task<IActionResult> GetAllStudents()
+        public async Task<IActionResult> GetAllPosts()
         {
-            var students = await _apiService.GetAsync<Student[]>("api/students");
-            return Ok(students);
+            var posts = await _apiService.GetAsync<Post[]>("posts");
+            return Ok(posts);
         }
-
         // GET: api/students/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetStudentById(int id)
