@@ -1,5 +1,6 @@
 using HttpClientProject.Service;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -9,12 +10,21 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register HttpClient and ApiService for DI
-builder.Services.AddHttpClient<IApiService, ApiService>(client =>
+
+// Configure the HttpClient separately
+builder.Services.AddHttpClient("ApiHttpClientConfig", client =>
 {
-    client.BaseAddress = new Uri("https://api.example.com/"); // Set a base API address
+    client.BaseAddress = new Uri("https://api.example.com/");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
+    client.Timeout = TimeSpan.FromSeconds(60); // Optional timeout configuration
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    MaxConnectionsPerServer = 10  // Optional: limit max connections to server
 });
+
+// Register ApiService as a singleton to inject IHttpClientFactory
+builder.Services.AddSingleton<IApiService, ApiService>();
 
 var app = builder.Build();
 

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
-using System.Net.Http.Json;
-using Microsoft.Extensions.Logging;
+﻿using Polly;
 
 namespace HttpClientProject.Service
 {
@@ -16,7 +11,7 @@ namespace HttpClientProject.Service
         public ApiService(IHttpClientFactory httpClientFactory, ILogger<ApiService> logger)
         {
             //_httpClient = httpClient;
-            _httpClient = httpClientFactory.CreateClient();
+            _httpClient = httpClientFactory.CreateClient("ApiHttpClientConfig");
             _logger = logger;
         }
 
@@ -104,6 +99,52 @@ namespace HttpClientProject.Service
                 _logger.LogError(ex, "Error occurred while executing DELETE request");
                 throw;
             }
+        }
+
+        public void ConfigurePolicies(IServiceCollection services, IHttpClientBuilder builder)
+        {
+            var retryPolicy = Policy
+                .Handle<HttpRequestException>() // Handles transient errors such as timeouts and network failures
+                .OrResult<HttpResponseMessage>(r => r.StatusCode == System.Net.HttpStatusCode.NotFound) // Handle specific HTTP status codes
+                .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                    (result, timespan, retryCount, context) =>
+                    {
+                        // Log retry attempt
+                        _logger.LogWarning($"Retrying {retryCount} time after {timespan.TotalSeconds} seconds due to error: {result.Exception?.Message ?? result.Result.ReasonPhrase}");
+                    });
+
+            var circuitBreakerPolicy = Policy
+                .Handle<HttpRequestException>()
+                .OrResult<HttpResponseMessage>(r => (int)r.StatusCode >= 500) // Handles 5XX server errors
+                .CircuitBreakerAsync(2, TimeSpan.FromSeconds(30),
+                    onBreak: (result, breakDelay) =>
+                    {
+                        // Log circuit breaker activation
+                        _logger.LogError($"Circuit breaker opened for {breakDelay.TotalSeconds} seconds due to: {result.Exception?.Message ?? result.Result.ReasonPhrase}");
+                    },
+                    onReset: () =>
+                    {
+                        // Log circuit breaker reset
+                        _logger.LogInformation("Circuit breaker reset.");
+                    },
+                    onHalfOpen: () =>
+                    {
+                        // Log circuit breaker half-open state
+                        _logger.LogInformation("Circuit breaker is half-open, next call is a trial.");
+                    });
+
+            builder.Services.AddHttpClient<IApiService, ApiService>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.example.com/");
+                client.DefaultRequestHeaders.Add("Accept", "application/json");
+                client.Timeout = TimeSpan.FromSeconds(60); // Optional timeout configuration
+            })
+            .AddPolicyHandler(retryPolicy) // Add retry policy
+            .AddPolicyHandler(circuitBreakerPolicy) // Add circuit breaker policy
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            {
+                MaxConnectionsPerServer = 10  // Optional: limit max connections to server
+            });
         }
     }
 }
