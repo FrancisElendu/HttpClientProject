@@ -29,6 +29,21 @@ namespace HttpClientProject.Controllers
             var posts = await _apiService.GetAsync<Post[]>("posts");
             return Ok(posts);
         }
+
+        [HttpPost]
+        public async Task<IActionResult> CreatePost([FromBody] Post post)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var createdStudent = await _apiService.PostAsync<Post, Post>("posts", post);
+            return CreatedAtAction(nameof(GetStudentById), new { id = createdStudent.Id }, createdStudent);
+        }
+
+
+
         // GET: api/students/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetStudentById(int id)
