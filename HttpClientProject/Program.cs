@@ -1,3 +1,4 @@
+using HttpClientProject.Extensions;
 using HttpClientProject.Service;
 
 
@@ -11,20 +12,34 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
-// Configure the HttpClient separately
-builder.Services.AddHttpClient("ApiHttpClientConfig", client =>
+//// Configure the HttpClient separately
+//builder.Services.AddHttpClient("ApiHttpClientConfig", client =>
+//{
+//    client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com");
+//    client.DefaultRequestHeaders.Add("Accept", "application/json");
+//    client.Timeout = TimeSpan.FromSeconds(60); // Optional timeout configuration
+//})
+//.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+//{
+//    MaxConnectionsPerServer = 10  // Optional: limit max connections to server
+//});
+
+//// Register ApiService as a singleton to inject IHttpClientFactory
+//builder.Services.AddSingleton<IApiService, ApiService>();
+
+// Configure and register HttpClient with policies
+builder.Services.AddHttpClient<IApiService, ApiService>(client =>
 {
     client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
-    client.Timeout = TimeSpan.FromSeconds(60); // Optional timeout configuration
+    client.Timeout = TimeSpan.FromSeconds(60);
 })
+//.AddPolicies(builder.Services.BuildServiceProvider().GetRequiredService<ILogger<ApiService>>())
+.AddPolicies(provider => provider.GetRequiredService<ILogger<ApiService>>())
 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
 {
-    MaxConnectionsPerServer = 10  // Optional: limit max connections to server
+    MaxConnectionsPerServer = 10
 });
-
-// Register ApiService as a singleton to inject IHttpClientFactory
-builder.Services.AddSingleton<IApiService, ApiService>();
 
 var app = builder.Build();
 
